@@ -9,6 +9,7 @@ import '../../models/alert.dart';
 import '../../models/report.dart';
 import '../../widgets/gis_map_widget.dart';
 import '../../widgets/risk_badge.dart';
+import 'citizen_digital_twin_screen.dart';
 import 'full_screen_gis_map.dart';
 import 'report_hazard_screen.dart';
 
@@ -46,15 +47,28 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final appState = context.read<AppState>();
-    await appState.refreshLocation();
+    
+    // Background location refresh (non-blocking for UI render)
+    appState.refreshLocation().catchError((_) {});
 
-    final alerts = await appState.alertRepository.getAlerts();
+    List<HazardAlert> alerts = [];
+    try {
+      alerts = await appState.alertRepository.getAlerts().timeout(const Duration(seconds: 1));
+    } catch (_) {}
 
     if (!mounted) return;
     setState(() {
       _alerts = alerts;
       _loading = false;
     });
+  }
+
+  void _openDigitalTwin() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const CitizenDigitalTwinScreen(),
+      ),
+    );
   }
 
   void _openReport(HazardType? preset) {
@@ -174,6 +188,66 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ],
+                    ),
+                  ),
+
+                  // ── 1.5 DIGITAL TWIN ENTRY POINT CARD ──────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: InkWell(
+                      onTap: _openDigitalTwin,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [CitizenTheme.primary, Colors.teal.shade800],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: CitizenTheme.primary.withAlpha(60),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withAlpha(40),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.auto_graph, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    'VIEW DIGITAL TWIN',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'View Emerging Risk & Predictive Terrain Forecasts',
+                                    style: TextStyle(color: Colors.white70, fontSize: 11),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 
